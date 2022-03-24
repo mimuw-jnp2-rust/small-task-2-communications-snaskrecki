@@ -117,7 +117,12 @@ struct Server {
 
 impl Server {
     fn new(name: String, limit: u32) -> Server {
-        todo!()
+        Server {
+            name,
+            limit,
+            post_count: 0,
+            connected_client: None,
+        }
     }
 
     // Consumes the message.
