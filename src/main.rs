@@ -21,7 +21,11 @@ enum MessageType {
 
 impl MessageType {
     fn header(&self) -> &'static str {
-        todo!()
+        match self {
+            Self::Handshake => "[HANDSHAKE]",
+            Self::Post => "[POST]",
+            Self::GetCount => "[GET COUNT]",
+        }
     }
 }
 
@@ -68,15 +72,26 @@ impl Client {
     // Attempts opening a new connection to the given address.
     // Method should return an error when a connection already exists.
     // The client should send a handshake to the server.
-    fn open(&mut self, addr: &str, server: Server) -> CommsResult<()> {
-        todo!()
+    fn open(&mut self, addr: &str, mut server: Server) -> CommsResult<()> {
+        match self.connections.get(addr) {
+            Some(_connection) => Err(CommsError::ConnectionExists(String::from(addr))),
+            None => {
+                server.receive(Message {
+                    msg_type: MessageType::Handshake,
+                    load: String::from(self.ip.as_str()),
+                });
+                self.connections
+                    .insert(String::from(addr), Connection::Open(server));
+                Ok(())
+            }
+        }
     }
 
     // Sends the provided message to the server at the given `addr`.
     // Can only send messages through open connections. If the server
     // responds with a ServerLimitReached error, its corresponding connection
     // should be closed.
-    fn send(&mut self, addr: &str, msg: Message) -> CommsResult<Response> {
+    fn send(&mut self, _addr: &str, _msg: Message) -> CommsResult<Response> {
         // server.receive(msg)
         todo!()
     }
@@ -85,7 +100,7 @@ impl Client {
     // the `Open` status.
     #[allow(dead_code)]
     fn is_open(&self, addr: &str) -> bool {
-        todo!()
+        self.connections.contains_key(addr)
     }
 
     // Returns the number of closed connections
@@ -102,7 +117,6 @@ enum Response {
     GetCount(u32),
 }
 
-
 #[derive(Clone)]
 struct Server {
     name: String,
@@ -113,7 +127,12 @@ struct Server {
 
 impl Server {
     fn new(name: String, limit: u32) -> Server {
-        todo!()
+        Server {
+            name,
+            limit,
+            post_count: 0,
+            connected_client: None,
+        }
     }
 
     // Consumes the message.
@@ -124,7 +143,51 @@ impl Server {
     fn receive(&mut self, msg: Message) -> CommsResult<Response> {
         eprintln!("{} received:\n{}", self.name, msg.content());
 
-        todo!()
+        match msg.msg_type {
+            MessageType::Handshake => {
+                if self.connected_client.is_some()
+                    && self.connected_client.as_ref().unwrap() == msg.load.as_str()
+                {
+                    // client is already connected; indicate that with
+                    // corresponding error message
+                    Err(CommsError::UnexpectedHandshake(String::from(
+                        self.name.as_str(),
+                    )))
+                } else {
+                    // a new client wants to connect; welcome them by sending
+                    // the appropriate message
+                    self.connected_client = Option::from(msg.load);
+                    Ok(Response::HandshakeReceived)
+                }
+            }
+            MessageType::Post => {
+                if self.connected_client.is_none() {
+                    // handle the case when there is no connection open
+                    Err(CommsError::ConnectionNotFound(String::from(
+                        self.name.as_str(),
+                    )))
+                } else if self.post_count == self.limit {
+                    // handle the case when we will exceed the limit
+                    Err(CommsError::ServerLimitReached(String::from(
+                        self.name.as_str(),
+                    )))
+                } else {
+                    // business as usual, consume the post
+                    self.post_count += 1;
+                    Ok(Response::PostReceived)
+                }
+            }
+            MessageType::GetCount => {
+                if self.connected_client.is_none() {
+                    // handle the case when there is no connection open
+                    Err(CommsError::ConnectionNotFound(String::from(
+                        self.name.as_str(),
+                    )))
+                } else {
+                    Ok(Response::GetCount(self.post_count))
+                }
+            }
+        }
     }
 }
 
