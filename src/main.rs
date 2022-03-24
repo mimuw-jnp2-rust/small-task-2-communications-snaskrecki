@@ -72,12 +72,16 @@ impl Client {
     // Attempts opening a new connection to the given address.
     // Method should return an error when a connection already exists.
     // The client should send a handshake to the server.
-    fn open(&mut self, addr: &str, server: Server) -> CommsResult<()> {
+    fn open(&mut self, addr: &str, mut server: Server) -> CommsResult<()> {
         match self.connections.get(addr) {
             Some(connection) => {
-                Err(CommsError::ConnectionExists(String::from(self.ip.as_str())))
+                Err(CommsError::ConnectionExists(String::from(addr)))
             },
             None => {
+                server.receive(Message {
+                    msg_type: MessageType::Handshake,
+                    load: String::from(self.ip.as_str())
+                });
                 self.connections.insert(String::from(addr), Connection::Open(server));
                 Ok(())
             }
