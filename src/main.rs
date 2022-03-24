@@ -149,7 +149,9 @@ impl Server {
                 }
             },
             MessageType::Post => todo!(),
-            MessageType::GetCount => todo!(),
+            MessageType::GetCount => {
+                Ok(Response::GetCount(self.post_count))
+            },
         }
     }
 }
