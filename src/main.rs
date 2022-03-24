@@ -21,7 +21,11 @@ enum MessageType {
 
 impl MessageType {
     fn header(&self) -> &'static str {
-        todo!()
+        match self {
+            Self::Handshake => "[HANDSHAKE]",
+            Self::Post => "[POST]",
+            Self::GetCount => "[GET COUNT]",
+        }
     }
 }
 
