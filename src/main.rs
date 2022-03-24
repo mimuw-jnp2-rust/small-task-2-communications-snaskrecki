@@ -133,7 +133,24 @@ impl Server {
     fn receive(&mut self, msg: Message) -> CommsResult<Response> {
         eprintln!("{} received:\n{}", self.name, msg.content());
 
-        todo!()
+        match msg.msg_type {
+            MessageType::Handshake => {
+                if self.connected_client.is_some() && self.connected_client.as_ref().unwrap() == msg.load.as_str() {
+                    // client is already connected; indicate that with
+                    // corresponding error message
+                    Err(CommsError::UnexpectedHandshake(
+                        String::from(self.name.as_str()))
+                    )
+                } else {
+                    // a new client wants to connect; welcome them by sending
+                    // the appropriate message
+                    self.connected_client = Option::from(msg.load);
+                    Ok(Response::HandshakeReceived)
+                }
+            },
+            MessageType::Post => todo!(),
+            MessageType::GetCount => todo!(),
+        }
     }
 }
 
