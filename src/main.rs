@@ -73,7 +73,15 @@ impl Client {
     // Method should return an error when a connection already exists.
     // The client should send a handshake to the server.
     fn open(&mut self, addr: &str, server: Server) -> CommsResult<()> {
-        todo!()
+        match self.connections.get(addr) {
+            Some(connection) => {
+                Err(CommsError::ConnectionExists(String::from(self.ip.as_str())))
+            },
+            None => {
+                self.connections.insert(String::from(addr), Connection::Open(server));
+                Ok(())
+            }
+        }
     }
 
     // Sends the provided message to the server at the given `addr`.
@@ -89,7 +97,7 @@ impl Client {
     // the `Open` status.
     #[allow(dead_code)]
     fn is_open(&self, addr: &str) -> bool {
-        todo!()
+        self.connections.contains_key(addr)
     }
 
     // Returns the number of closed connections
