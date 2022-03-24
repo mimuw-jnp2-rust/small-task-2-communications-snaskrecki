@@ -74,15 +74,14 @@ impl Client {
     // The client should send a handshake to the server.
     fn open(&mut self, addr: &str, mut server: Server) -> CommsResult<()> {
         match self.connections.get(addr) {
-            Some(connection) => {
-                Err(CommsError::ConnectionExists(String::from(addr)))
-            },
+            Some(_connection) => Err(CommsError::ConnectionExists(String::from(addr))),
             None => {
                 server.receive(Message {
                     msg_type: MessageType::Handshake,
-                    load: String::from(self.ip.as_str())
+                    load: String::from(self.ip.as_str()),
                 });
-                self.connections.insert(String::from(addr), Connection::Open(server));
+                self.connections
+                    .insert(String::from(addr), Connection::Open(server));
                 Ok(())
             }
         }
@@ -92,7 +91,7 @@ impl Client {
     // Can only send messages through open connections. If the server
     // responds with a ServerLimitReached error, its corresponding connection
     // should be closed.
-    fn send(&mut self, addr: &str, msg: Message) -> CommsResult<Response> {
+    fn send(&mut self, _addr: &str, _msg: Message) -> CommsResult<Response> {
         // server.receive(msg)
         todo!()
     }
@@ -117,7 +116,6 @@ enum Response {
     PostReceived,
     GetCount(u32),
 }
-
 
 #[derive(Clone)]
 struct Server {
@@ -147,46 +145,48 @@ impl Server {
 
         match msg.msg_type {
             MessageType::Handshake => {
-                if self.connected_client.is_some() && self.connected_client.as_ref().unwrap() == msg.load.as_str() {
+                if self.connected_client.is_some()
+                    && self.connected_client.as_ref().unwrap() == msg.load.as_str()
+                {
                     // client is already connected; indicate that with
                     // corresponding error message
-                    Err(CommsError::UnexpectedHandshake(
-                        String::from(self.name.as_str()))
-                    )
+                    Err(CommsError::UnexpectedHandshake(String::from(
+                        self.name.as_str(),
+                    )))
                 } else {
                     // a new client wants to connect; welcome them by sending
                     // the appropriate message
                     self.connected_client = Option::from(msg.load);
                     Ok(Response::HandshakeReceived)
                 }
-            },
+            }
             MessageType::Post => {
                 if self.connected_client.is_none() {
                     // handle the case when there is no connection open
-                    Err(CommsError::ConnectionNotFound(
-                        String::from(self.name.as_str()))
-                    )
+                    Err(CommsError::ConnectionNotFound(String::from(
+                        self.name.as_str(),
+                    )))
                 } else if self.post_count == self.limit {
                     // handle the case when we will exceed the limit
-                    Err(CommsError::ServerLimitReached(
-                        String::from(self.name.as_str()))
-                    )
+                    Err(CommsError::ServerLimitReached(String::from(
+                        self.name.as_str(),
+                    )))
                 } else {
                     // business as usual, consume the post
                     self.post_count += 1;
                     Ok(Response::PostReceived)
                 }
-            },
+            }
             MessageType::GetCount => {
                 if self.connected_client.is_none() {
                     // handle the case when there is no connection open
-                    Err(CommsError::ConnectionNotFound(
-                        String::from(self.name.as_str()))
-                    )
+                    Err(CommsError::ConnectionNotFound(String::from(
+                        self.name.as_str(),
+                    )))
                 } else {
                     Ok(Response::GetCount(self.post_count))
                 }
-            },
+            }
         }
     }
 }
