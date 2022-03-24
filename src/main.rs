@@ -148,9 +148,32 @@ impl Server {
                     Ok(Response::HandshakeReceived)
                 }
             },
-            MessageType::Post => todo!(),
+            MessageType::Post => {
+                if self.connected_client.is_none() {
+                    // handle the case when there is no connection open
+                    Err(CommsError::ConnectionNotFound(
+                        String::from(self.name.as_str()))
+                    )
+                } else if self.post_count == self.limit {
+                    // handle the case when we will exceed the limit
+                    Err(CommsError::ServerLimitReached(
+                        String::from(self.name.as_str()))
+                    )
+                } else {
+                    // business as usual, consume the post
+                    self.post_count += 1;
+                    Ok(Response::PostReceived)
+                }
+            },
             MessageType::GetCount => {
-                Ok(Response::GetCount(self.post_count))
+                if self.connected_client.is_none() {
+                    // handle the case when there is no connection open
+                    Err(CommsError::ConnectionNotFound(
+                        String::from(self.name.as_str()))
+                    )
+                } else {
+                    Ok(Response::GetCount(self.post_count))
+                }
             },
         }
     }
